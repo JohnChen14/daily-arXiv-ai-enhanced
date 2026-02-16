@@ -157,13 +157,28 @@ jobs:
         git fetch origin data                                                                                                                                                                           
                                                                                                                                                                                                               
         # Check if data branch exists                                                                                                                                                                   
-        if git ls-remote --heads origin data | grep -q data; then                                                                                                                                       
+        if git ls-remote --heads origin data | grep -q data; then
+          echo "data branch exists, pulling historical files..."
+          
           # Create data directory if it doesn't exist                                                                                                                                                   
           mkdir -p data                                                                                                                                                                                 
                                                                                                                                                                                                       
-          # Copy historical jsonl files from data branch                                                                                                                                                
-          git checkout origin/data -- data/*.jsonl 2>/dev/null || echo "No historical data files found"                                                                                                 
-          echo "✅ Historical data pulled from data branch"                                                                                                                                             
+          # List files in data branch to verify
+            echo "Files available in data/data/ on remote:"
+            git ls-tree origin/data -- data/
+
+            # Try to pull historical jsonl files from data branch
+            git checkout origin/data -- data/*.jsonl
+
+            # List what we actually got
+            echo "Files pulled to local data/ directory:"
+            ls -la data/
+
+            # Delete today's file if it was pulled - we'll regenerate it
+            today=$(date -u "+%Y-%m-%d")
+            rm -f "data/${today}.jsonl" "data/${today}_AI_enhanced_*.jsonl" 2>/dev/null || true
+
+            echo "✅ Historical data pulled from data branch (excluding today's file)"                                                                                                                                             
         else                                                                                                                                                                                            
           echo "ℹ️  Data branch doesn't exist yet, will create new branch"                                                                                                                               
         fi                                                                                                                                                                                              
