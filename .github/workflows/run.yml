@@ -150,7 +150,8 @@ jobs:
         fi
         echo "Markdown转换完成 / Markdown conversion completed"
     
-    - name: Pull historical data from data branch                                                                                                                                                       
+    - name: Pull historical data from data branch
+      if: steps.dedup_check.outputs.has_new_content == 'true'
       run: |                                                                                                                                                                                            
         echo "Pulling historical data from data branch..."                                                                                                                                              
         # Fetch data branch                                                                                                                                                                             
@@ -163,22 +164,18 @@ jobs:
           # Create data directory if it doesn't exist                                                                                                                                                   
           mkdir -p data                                                                                                                                                                                 
                                                                                                                                                                                                       
-          # List files in data branch to verify
-            echo "Files available in data/data/ on remote:"
-            git ls-tree origin/data -- data/
-
-            # Try to pull historical jsonl files from data branch
-            git checkout origin/data -- data/*.jsonl
-
-            # List what we actually got
-            echo "Files pulled to local data/ directory:"
-            ls -la data/
-
-            # Delete today's file if it was pulled - we'll regenerate it
+          # Get list of jsonl files from remote data branch, excluding today's date
             today=$(date -u "+%Y-%m-%d")
-            rm -f "data/${today}.jsonl" "data/${today}_AI_enhanced_*.jsonl" 2>/dev/null || true
+            git ls-tree -r --name-only origin/data:data/ | grep "\.jsonl$" | grep -v "$today" | while read file; do
+              echo "Pulling: data/$file"
+              git checkout origin/data -- "data/$file"
+            done
 
-            echo "✅ Historical data pulled from data branch (excluding today's file)"                                                                                                                                             
+            # List what we got
+            echo "Files in data/ after pull:"
+            ls data/
+
+            echo "✅ Historical data pulled from data branch (excluding today's file)"                                                                                                                                            
         else                                                                                                                                                                                            
           echo "ℹ️  Data branch doesn't exist yet, will create new branch"                                                                                                                               
         fi                                                                                                                                                                                              
